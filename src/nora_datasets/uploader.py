@@ -1,8 +1,10 @@
+import abc
 import pathlib
 import subprocess
 import logging
 import sys
 
+import httpx
 import tomli_w
 import tomli
 
@@ -40,16 +42,33 @@ def check_output(*args, **kwargs):
     return output.decode("utf-8").strip()
 
 
-class IPFSWrapperLinux:
+class IPFSClientImpl:
 
-    def __init__(self):
+    @abc.abstractmethod
+    def add(self, dataset_path: pathlib.Path):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get(self, hash_: str, save_location: pathlib.Path = None):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_http(self, hash_: str, save_location: pathlib.Path = None):
+        raise NotImplementedError
+
+
+class IPFSClientLinux(IPFSClientImpl):
+
+    def __init__(self, gateway):
+        self._gateway = gateway
         self._binary_which = pathlib.Path("/usr/bin/which")
         if not self._binary_which.exists():
             raise RuntimeError(f"Could not find {str(self._binary_which)}")
 
-        self._binary_ipfs = self._check_ipfs_binary()
+        self._binary_ipfs = self.check_ipfs_binary()
+        self._max_retry = 10
 
-    def _check_ipfs_binary(self):
+    def check_ipfs_binary(self):
         output = check_output(
             [str(self._binary_which.absolute()), "ipfs"],
             stderr=subprocess.STDOUT,
@@ -80,23 +99,44 @@ class IPFSWrapperLinux:
             cmd += ["--output", str(save_location.absolute())]
 
         subprocess_stream(cmd)
-        return None
+        return True
+
+    def get_http(self, hash_: str, save_location: pathlib.Path = None, retry=0):
+
+        response = httpx.get(f"{self._gateway}/ipfs/{hash_}", timeout=300)
+
+        if response.status_code == 200:
+            with open(save_location, "wb+") as f:
+                f.write(response.content)
+        else:
+            if retry >= self._max_retry:
+                return False
+
+            return self.get_http(hash_, save_location, retry=retry + 1)
+        return True
 
 
-class IPFSWrapper:
+class IPFSClient:
 
-    def __init__(self):
-        self.instance = IPFSWrapperLinux()
+    def __init__(self, http_gateway="https://cloudflare-ipfs.com", http=False):
+        self.instance = IPFSClientLinux(gateway=http_gateway)
+        self._has_ipfs_binary = self.instance.check_ipfs_binary()
+        self._gateway = http_gateway
+        self._force_http = http
 
     def add(self, dataset_path: pathlib.Path):
         return self.instance.add(dataset_path)
 
     def get(self, hash_: str, save_location=None):
-        return self.instance.get(hash_, save_location)
+        if self._force_http:
+            return self.instance.get_http(hash_, save_location)
+        elif self._has_ipfs_binary:
+            return self.instance.get(hash_, save_location)
 
 
-def example_add_repositories(ipfs, repository_path: pathlib.Path):
+def add_repositories(repository_path: pathlib.Path):
     for dataset in [x for x in repository_path.iterdir() if x.is_dir()]:
+        ipfs = IPFSClient()
         _LOGGER.info(f"Processing {dataset}")
         dataset_files = dataset.joinpath("data")
         metadata_path = dataset.joinpath("metadata.toml")
@@ -107,6 +147,9 @@ def example_add_repositories(ipfs, repository_path: pathlib.Path):
             # Publish data to IPFS
             hashes = ipfs.add(dataset_files)
 
+            if len(hashes) == 0:
+                continue
+
             # Update metadata
             _LOGGER.info(f"Updating metadata {metadata_path} for dataset {dataset.name}")
             metadata_doc = read_toml(metadata_path)
@@ -114,7 +157,11 @@ def example_add_repositories(ipfs, repository_path: pathlib.Path):
             write_toml(metadata_path, metadata_doc)
 
 
-def example_retrieve_repository(ipfs, repository_path: pathlib.Path, dataset: str = "iris"):
+def retrieve_repository(repository_path: pathlib.Path, dataset: str = "iris", http_gateway=None, http=True):
+    if http_gateway:
+        ipfs = IPFSClient(http_gateway=http_gateway, http=http)
+    else:
+        ipfs = IPFSClient(http=http)
     dataset_path = repository_path.joinpath(dataset)
     dataset_info = read_toml(dataset_path.joinpath("metadata.toml"))
 
@@ -130,7 +177,5 @@ def example_retrieve_repository(ipfs, repository_path: pathlib.Path, dataset: st
 if __name__ == "__main__":
     path = pathlib.Path(__file__).parent.joinpath("repository")
 
-    ipfs = IPFSWrapper()
-
-    example_add_repositories(ipfs, repository_path=path)
-    example_retrieve_repository(ipfs, repository_path=path, dataset="iris")
+    add_repositories(repository_path=path)
+    retrieve_repository(repository_path=path, dataset="iris")

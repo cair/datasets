@@ -19,7 +19,8 @@ dependencies = [
     "numpy>=1.23.1",
     "ipfshttpclient>=0.7.0",
     "tomli-w==1.0.0",
-    "tomli=2.0.1"
+    "tomli==2.0.1",
+    "httpx==0.23.0"
 ]
 
 classifiers = [
