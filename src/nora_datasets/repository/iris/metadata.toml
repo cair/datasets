@@ -1,0 +1,19 @@
+schema_version = 1
+files = [
+    [
+        "iris/data/Index",
+        "Qmf5ugtTatyV36PAsMNm3PBos3ZQHv1UG6y4gQJME3D9ac",
+    ],
+    [
+        "iris/data/bezdekIris.data",
+        "QmVgq5eNwMy34wAWKHzdJJ9d9AX9xpN4425vDBwNL4aE7i",
+    ],
+    [
+        "iris/data/iris.data",
+        "QmcxbDmv9gJ5ck5UskpFfevNCYZRKn1A9Ux4jLGFtGQ8s9",
+    ],
+    [
+        "iris/data/iris.names",
+        "QmbnjXuF2HnikY2qgHWV8T7waxd4KamCNMyhg6A4rpNKPJ",
+    ],
+]

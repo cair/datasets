@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "NORA-Datasets"
+description = "A novel library for datasets for machine learning research"
+readme = "README.md"
+authors = [
+    { name = "Per-Arne Andersen", email = "per.andersen@uia.no" },
+]
+maintainers = [
+    { name = "Per-Arne Andersen", email = "per.andersen@uia.no" },
+]
+license-files = { paths = ["LICENSE"] }
+requires-python = ">=3.7"
+
+dependencies = [
+    "numpy>=1.23.1",
+    "ipfshttpclient>=0.7.0",
+    "tomli-w==1.0.0",
+    "tomli=2.0.1"
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dynamic = ["version"]
+
+
+[project.urls]
+Homepage = "https://github.com/cair/datasets"
+Documentation = "https://github.com/cair/datasets#readme"
+"Bug Tracker" = "https://github.com/cair/datasets/issues"
+
+[tool.hatch]
+version.source = "vcs"
+build.hooks.vcs.version-file = "src/nora_datasets/version.py"
